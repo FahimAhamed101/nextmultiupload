@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 export default function CreateProductPage() {
   const router = useRouter();
   const [createProduct, { isLoading, isError, error }] = useCreateProductMutation();
-  const [imageFile, setImageFile] = useState(null);
+  const [imageFiles, setImageFiles] = useState([]); // Changed to array for multiple files
   
   const [formData, setFormData] = useState({
     name: '',
@@ -19,7 +19,7 @@ export default function CreateProductPage() {
     name: '',
     price: '',
     category: '',
-    image: '',
+    images: '',
     general: ''
   });
 
@@ -33,21 +33,35 @@ export default function CreateProductPage() {
   };
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Validate image file
+    const files = Array.from(e.target.files);
+    
+    // Validate each file
+    const validFiles = [];
+    const errors = [];
+    
+    files.forEach(file => {
       if (!file.type.startsWith('image/')) {
-        setValidationErrors(prev => ({ ...prev, image: 'Please upload an image file' }));
+        errors.push(`File ${file.name} is not an image`);
         return;
       }
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        setValidationErrors(prev => ({ ...prev, image: 'Image must be less than 5MB' }));
+        errors.push(`File ${file.name} exceeds 5MB limit`);
         return;
       }
+      validFiles.push(file);
+    });
 
-      setImageFile(file);
-      setValidationErrors(prev => ({ ...prev, image: '' }));
+    if (errors.length > 0) {
+      setValidationErrors(prev => ({ ...prev, images: errors.join(', ') }));
+      return;
     }
+
+    setImageFiles(prev => [...prev, ...validFiles]);
+    setValidationErrors(prev => ({ ...prev, images: '' }));
+  };
+
+  const removeImage = (index) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const validateForm = () => {
@@ -72,8 +86,8 @@ export default function CreateProductPage() {
       isValid = false;
     }
 
-    if (!imageFile) {
-      errors.image = 'Product image is required';
+    if (imageFiles.length === 0) {
+      errors.images = 'At least one product image is required';
       isValid = false;
     }
 
@@ -94,9 +108,10 @@ export default function CreateProductPage() {
     data.append('price', formData.price);
     data.append('category', formData.category);
     
-    if (imageFile) {
-      data.append('image', imageFile);
-    }
+    // Append each image file
+    imageFiles.forEach(file => {
+      data.append('images', file);
+    });
 
     try {
       await createProduct(data).unwrap();
@@ -109,7 +124,7 @@ export default function CreateProductPage() {
         name: '',
         price: '',
         category: '',
-        image: '',
+        images: '',
         general: ''
       });
 
@@ -232,35 +247,49 @@ export default function CreateProductPage() {
           )}
         </div>
 
-        {/* Image Upload */}
+        {/* Image Upload - Updated for multiple files */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Product Image
+            Product Images (Multiple allowed)
           </label>
           <input
             type="file"
             accept="image/*"
             onChange={handleImageChange}
+            multiple
             className={`w-full text-sm text-gray-500
               file:mr-4 file:py-2 file:px-4
               file:rounded-md file:border-0
               file:text-sm file:font-semibold
               ${
-                validationErrors.image
+                validationErrors.images
                   ? 'file:bg-red-50 file:text-red-700 hover:file:bg-red-100'
                   : 'file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100'
               }`}
           />
-          {validationErrors.image && (
-            <p className="mt-1 text-sm text-red-600">{validationErrors.image}</p>
+          {validationErrors.images && (
+            <p className="mt-1 text-sm text-red-600">{validationErrors.images}</p>
           )}
-          {imageFile && (
-            <div className="mt-2">
-              <img 
-                src={URL.createObjectURL(imageFile)} 
-                alt="Preview" 
-                className="h-32 object-contain border rounded-md"
-              />
+          
+          {/* Image previews */}
+          {imageFiles.length > 0 && (
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              {imageFiles.map((file, index) => (
+                <div key={index} className="relative">
+                  <img 
+                    src={URL.createObjectURL(file)} 
+                    alt={`Preview ${index}`}
+                    className="h-24 w-full object-cover border rounded-md"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>

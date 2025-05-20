@@ -18,14 +18,15 @@ export default function ProductsPage() {
           <div key={product._id} className="border rounded-lg p-4 shadow">
             <Link href={`/products/${product._id}`}>
               <div className="relative h-48 mb-4">
-                {product.images?.[0] && (
-                  <Image
-                    src={product.images[0]}
-                    alt={product.name}
-                    fill
-                    className="object-cover rounded"
-                  />
-                )}
+              {product.imageUrls && (
+                            <Image
+                              src={product.imageUrls[0]}
+                              alt={product.name}
+                              fill
+                              className="object-cover rounded-lg"
+                              priority
+                            />
+                          )}
               </div>
               <h2 className="text-xl font-semibold">{product.name}</h2>
               <p className="text-gray-600">${product.price}</p>
